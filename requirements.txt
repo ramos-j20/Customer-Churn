@@ -1,0 +1,14 @@
+# Core Dependencies
+confluent-kafka==2.3.0
+pandas==2.1.4
+minio==7.2.0
+pyarrow
+python-dotenv==1.0.1
+faker==22.6.0
+pydantic==2.5.3
+numpy==1.26.3
+requests==2.31.0
+scikit-learn
+mlflow==2.9.2
+xgboost
+imbalanced-learn
