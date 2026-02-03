@@ -26,8 +26,8 @@ TOPIC = 'live_churn_stream'
 GROUP_ID = 'churn-data-lake-sink'
 # MinIO Config
 MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT', 'localhost:9000')
-MINIO_ACCESS_KEY = os.getenv('MINIO_ROOT_USER', 'minioadmin')
-MINIO_SECRET_KEY = os.getenv('MINIO_ROOT_PASSWORD', 'minioadmin')
+MINIO_ACCESS_KEY = os.getenv('MINIO_ROOT_USER')
+MINIO_SECRET_KEY = os.getenv('MINIO_ROOT_PASSWORD')
 BUCKET_NAME = 'churn-lake'
 
 # Batch Config
