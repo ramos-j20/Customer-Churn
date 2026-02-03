@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 # PAGE CONFIG
 # ==========================================
 st.set_page_config(
-    page_title="Churn Prediction Dashboard",
+    page_title="Customer Churn Prediction Dashboard",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -362,8 +362,8 @@ api_online, model_loaded = check_api_status()
 st.markdown(f"""
 <div class="header-section">
     <div>
-        <h1 class="header-title">📊 Churn Prediction</h1>
-        <p class="header-subtitle">AI-powered customer risk assessment</p>
+        <h1 class="header-title">📊 Customer Churn Prediction</h1>
+        <p class="header-subtitle">Machine Learning powered customer risk assessment</p>
     </div>
     <div class="status-container">
         <span class="status-badge {'status-online' if api_online else 'status-offline'}">
