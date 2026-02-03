@@ -197,7 +197,8 @@ with DAG(
         network_mode='churn_network',
         environment={
             'MLFLOW_TRACKING_URI': 'http://mlflow:5000',
-            'DATA_PATH': '/app/data/customer_churn.csv',
+            # Point to S3 Data Lake (Parquet folder)
+            'DATA_PATH': 's3://churn-lake/raw/',
             'MLFLOW_S3_ENDPOINT_URL': 'http://minio:9000',
             'AWS_ACCESS_KEY_ID': MINIO_ACCESS_KEY,
             'AWS_SECRET_ACCESS_KEY': MINIO_SECRET_KEY,
@@ -205,7 +206,7 @@ with DAG(
         },
         mounts=[
             Mount(source='/app/src', target='/app/src', type='bind'),
-            Mount(source='/app/data', target='/app/data', type='bind'),
+            # No need to mount /app/data anymore as we read from S3
         ],
         auto_remove=True,
         docker_url='unix://var/run/docker.sock',

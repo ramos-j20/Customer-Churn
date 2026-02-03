@@ -21,12 +21,13 @@ print("✅ IMPORTS COMPLETE. Starting Main Logic...", flush=True)
 
 from sklearn.model_selection import train_test_split, StratifiedKFold, RandomizedSearchCV
 from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline as SkPipeline # Unused but keeping original structural logic if implied, checked: unused. Removing.
+# from sklearn.pipeline import Pipeline # Removed
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
-    precision_recall_curve, make_scorer
+    precision_recall_curve
 )
 from xgboost import XGBClassifier
 from imblearn.over_sampling import SMOTE
@@ -84,7 +85,7 @@ def check_connection(uri, max_retries=5):
 
 # Add src to path just in case
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from src.features.preprocessing import (
+from churn_features.preprocessing import (
     preprocess_pipeline, 
     CATEGORICAL_FEATURES, 
     NUMERICAL_FEATURES,
@@ -101,8 +102,55 @@ FINAL_NUMERIC_FEATURES = NUMERICAL_FEATURES + BINARY_FEATURES
 # DATA LOADING
 # ==========================================
 def load_data(path):
+    """
+    Load data from local CSV or S3/MinIO Parquet.
+    """
     print(f"📂 Loading data from {path}...", flush=True)
-    df = pd.read_csv(path)
+    
+    # Handle S3/MinIO
+    if path.startswith("s3://"):
+        storage_options = {
+            "key": os.getenv("AWS_ACCESS_KEY_ID"),
+            "secret": os.getenv("AWS_SECRET_ACCESS_KEY"),
+            "client_kwargs": {
+                "endpoint_url": os.getenv("MLFLOW_S3_ENDPOINT_URL")
+            }
+        }
+        
+        try:
+            # S3FS allows reading from folder of parquets
+            df = pd.read_parquet(path, storage_options=storage_options)
+            print("   ✅ Loaded from S3 successfully.", flush=True)
+            
+            # Since S3 data might have extra metadata columns from sink, drop them
+            metadata_cols = [c for c in df.columns if c.startswith('_')]
+            if metadata_cols:
+                print(f"   🗑️ Dropping metadata columns: {metadata_cols}", flush=True)
+                df = df.drop(columns=metadata_cols)
+
+            # DEDUPLICATION LOGIC
+            # The producer loops, so we have multiple records per customer.
+            # We must keep only the latest one to avoid data leakage in train/test split.
+            if 'customerID' in df.columns and 'timestamp' in df.columns:
+                print(f"   🔄 Deduplicating {len(df)} records...", flush=True)
+                # Sort by timestamp descending
+                df = df.sort_values('timestamp', ascending=False)
+                # Drop duplicates, keeping the newest
+                df = df.drop_duplicates(subset=['customerID'], keep='first')
+                print(f"   ✅ retained {len(df)} unique customers.", flush=True)
+                
+                # Now safe to drop timestamp
+                df = df.drop(columns=['timestamp'])
+            elif 'timestamp' in df.columns:
+                 df = df.drop(columns=['timestamp'])
+                 
+        except Exception as e:
+            print(f"   ❌ Failed to load from S3: {e}", flush=True)
+            raise
+            
+    else:
+        # Fallback to local CSV
+        df = pd.read_csv(path)
     
     # Use centralized preprocessing pipeline
     df = preprocess_pipeline(df)
@@ -327,16 +375,18 @@ def train():
         mlflow.sklearn.log_model(xgb_best_model, "model", registered_model_name="churn_model_prod")
         print("   ✅ Model logged and registered as 'churn_model_prod'", flush=True)
 
-        # Transition to Production
+        # गवर्नANCE: Tag as pending_review instead of auto-promoting
         client = MlflowClient()
-        model_version = client.get_latest_versions("churn_model_prod", stages=["None"])[0].version
-        client.transition_model_version_stage(
+        versions = client.search_model_versions(f"name='churn_model_prod'")
+        latest_version = max(versions, key=lambda v: int(v.version))
+        
+        client.set_model_version_tag(
             name="churn_model_prod",
-            version=model_version,
-            stage="Production",
-            archive_existing_versions=True
+            version=latest_version.version,
+            key="status",
+            value="pending_review"
         )
-        print(f"   🚀 Model v{model_version} promoted to Production!", flush=True)
+        print(f"   📝 Model v{latest_version.version} tagged as 'pending_review'", flush=True)
     
     # ==========================================
     # SUMMARY

@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 # Add src to path to import local modules
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from src.features.preprocessing import preprocess_pipeline
+from churn_features.preprocessing import preprocess_pipeline
 from src.serving.schemas import ChurnPredictionRequest, ChurnPredictionResponse
 
 # Setup Logging

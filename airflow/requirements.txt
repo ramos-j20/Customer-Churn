@@ -1,0 +1,12 @@
+apache-airflow
+mlflow
+scikit-learn
+xgboost
+pandas
+requests
+minio
+pyarrow
+numpy
+s3fs
+boto3
+fsspec
