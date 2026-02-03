@@ -13,7 +13,7 @@ An end-to-end Machine Learning Operations (MLOps) platform designed to predict c
 *   **Interactive Dashboard**: A user-friendly **Streamlit** dashboard for visualizing churn predictions and customer insights.
 *   **Containerized Architecture**: Fully Dockerized environment for consistent deployment across different infrastructures.
 
-## architecture
+## Architecture
 
 The system follows a microservices architecture orchestrated by Docker Compose:
 
