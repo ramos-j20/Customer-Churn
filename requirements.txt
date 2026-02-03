@@ -12,3 +12,12 @@ scikit-learn
 mlflow==2.9.2
 xgboost
 imbalanced-learn
+
+# Serving
+fastapi
+uvicorn
+
+# Cloud & UI
+boto3
+streamlit
+plotly

@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 import mlflow
 import mlflow.sklearn
+from mlflow.tracking import MlflowClient
 import os
 
 print("✅ IMPORTS COMPLETE. Starting Main Logic...", flush=True)
@@ -40,7 +41,7 @@ from scipy.stats import randint, uniform
 # ==========================================
 DATA_PATH = os.getenv('DATA_PATH', 'data/customer_churn.csv')
 MLFLOW_TRACKING_URI = os.getenv('MLFLOW_TRACKING_URI', 'http://localhost:5000')
-EXPERIMENT_NAME = "churn_prediction_v2"
+EXPERIMENT_NAME = "churn_prediction_s3"
 
 # ==========================================
 # CONNECTION CHECK
@@ -323,8 +324,19 @@ def train():
         mlflow.log_metric("f1_score", f1_xgb)
         mlflow.log_metric("cv_best_score", xgb_search.best_score_)
         
-        mlflow.sklearn.log_model(xgb_best_model, "model")
-        print("   ✅ Model logged to MLflow.", flush=True)
+        mlflow.sklearn.log_model(xgb_best_model, "model", registered_model_name="churn_model_prod")
+        print("   ✅ Model logged and registered as 'churn_model_prod'", flush=True)
+
+        # Transition to Production
+        client = MlflowClient()
+        model_version = client.get_latest_versions("churn_model_prod", stages=["None"])[0].version
+        client.transition_model_version_stage(
+            name="churn_model_prod",
+            version=model_version,
+            stage="Production",
+            archive_existing_versions=True
+        )
+        print(f"   🚀 Model v{model_version} promoted to Production!", flush=True)
     
     # ==========================================
     # SUMMARY

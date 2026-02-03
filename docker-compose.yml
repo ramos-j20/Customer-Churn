@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ============================================
   # ZOOKEEPER - Kafka Coordination Service
@@ -94,15 +92,18 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      minio:
+        condition: service_started
     ports:
       - "5000:5000"
     environment:
       MLFLOW_BACKEND_STORE_URI: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/mlflow_db
-      MLFLOW_DEFAULT_ARTIFACT_ROOT: /mlflow/artifacts
-    volumes:
-      - ./mlflow/artifacts:/mlflow/artifacts
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: s3://churn-lake/mlflow
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
     command: >
-      mlflow server --backend-store-uri postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/mlflow_db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000
+      mlflow server  --backend-store-uri postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/mlflow_db  --default-artifact-root s3://churn-lake/mlflow  --host 0.0.0.0  --port 5000
     networks:
       - churn_network
     healthcheck:
@@ -306,13 +307,64 @@ services:
       MLFLOW_TRACKING_URI: http://mlflow:5000
       DATA_PATH: /app/data/customer_churn.csv
       GIT_PYTHON_REFRESH: quiet
+      # S3 Configuration for MLflow Artifacts
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
     depends_on:
       - mlflow
+      - minio
     command: python src/models/train.py
     networks:
       - churn_network
     profiles:
       - tools
+
+  # ============================================
+  # SERVING - FastAPI Prediction Endpoint
+  # ============================================
+  serving:
+    build: .
+    container_name: churn_serving
+    command: uvicorn src.serving.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MODEL_NAME: churn_model_prod
+      MODEL_STAGE: Production
+      # S3 Configuration for MLflow Artifacts
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      mlflow:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - churn_network
+
+  # ============================================
+  # DASHBOARD - Streamlit UI
+  # ============================================
+  dashboard:
+    build: .
+    container_name: churn_dashboard
+    command: streamlit run src/dashboard/app.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    environment:
+      SERVING_API_URL: http://serving:8000
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      serving:
+        condition: service_started
+    networks:
+      - churn_network
 
 # ============================================
 # NETWORKS
