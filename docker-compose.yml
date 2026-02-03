@@ -116,7 +116,9 @@ services:
   # AIRFLOW - Workflow Orchestration
   # ============================================
   airflow-init:
-    image: apache/airflow:2.8.0-python3.10
+    build:
+      context: ./airflow
+    image: custom-airflow:latest
     container_name: churn_airflow_init
     depends_on:
       postgres:
@@ -145,7 +147,9 @@ services:
       - churn_network
 
   airflow-webserver:
-    image: apache/airflow:2.8.0-python3.10
+    build:
+      context: ./airflow
+    image: custom-airflow:latest
     container_name: churn_airflow_webserver
     hostname: airflow-webserver
     depends_on:
@@ -181,7 +185,9 @@ services:
       retries: 5
 
   airflow-scheduler:
-    image: apache/airflow:2.8.0-python3.10
+    build:
+      context: ./airflow
+    image: custom-airflow:latest
     container_name: churn_airflow_scheduler
     hostname: airflow-scheduler
     depends_on:
@@ -267,6 +273,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./src:/app/src
+      - ./churn-features:/app/churn-features
     networks:
       - churn_network
     restart: always
@@ -277,7 +284,7 @@ services:
   consumer:
     build: .
     container_name: churn_consumer
-    command: python src/ingestion/s3_sink.py
+    command: python src/ingestion/s3_sink_transactional.py
     depends_on:
       kafka:
         condition: service_healthy
@@ -303,9 +310,10 @@ services:
     volumes:
       - ./src:/app/src
       - ./data:/app/data
+      - ./churn-features:/app/churn-features
     environment:
       MLFLOW_TRACKING_URI: http://mlflow:5000
-      DATA_PATH: /app/data/customer_churn.csv
+      DATA_PATH: s3://churn-lake/raw/
       GIT_PYTHON_REFRESH: quiet
       # S3 Configuration for MLflow Artifacts
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
@@ -339,6 +347,7 @@ services:
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
     volumes:
       - ./src:/app/src
+      - ./churn-features:/app/churn-features
     depends_on:
       mlflow:
         condition: service_healthy

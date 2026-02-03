@@ -12,6 +12,8 @@ scikit-learn
 mlflow==2.9.2
 xgboost
 imbalanced-learn
+s3fs
+fsspec
 
 # Serving
 fastapi

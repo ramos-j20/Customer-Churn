@@ -12,7 +12,9 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python dependencies
 COPY requirements.txt .
+COPY churn-features/ churn-features/
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir ./churn-features
 
 # Copy source code
 COPY src/ src/
