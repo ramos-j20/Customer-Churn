@@ -3,7 +3,7 @@
 
 An end-to-end Machine Learning Operations (MLOps) platform designed to predict customer churn in real-time. This system integrates modern data engineering and data science tools to provide a robust, scalable, and automated solution for identifying at-risk customers.
 
-## 🚀 Key Features
+## Key Features
 
 *   **Real-time Data Ingestion**: Uses **Apache Kafka** to stream customer data events.
 *   **Scalable Data Lake**: Leverages **MinIO** (S3-compatible) for robust object storage of raw data and model artifacts.
